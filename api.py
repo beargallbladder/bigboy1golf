@@ -364,6 +364,29 @@ def auth_status():
         })
     return jsonify({'authenticated': False})
 
+@app.route('/session', methods=['POST'])
+def create_session():
+    """Create a new session for anonymous users"""
+    session_id = hashlib.md5(
+        f"{request.remote_addr}{datetime.now().isoformat()}".encode()
+    ).hexdigest()[:12]
+    
+    return jsonify({
+        'session_id': session_id,
+        'shots_remaining': CONFIG['DAILY_LIMIT_ANON']
+    })
+
+@app.route('/session/<session_id>', methods=['GET'])
+def get_session(session_id):
+    """Get session info"""
+    # For now, just return empty session
+    return jsonify({
+        'session': {
+            'id': session_id,
+            'shots': []
+        }
+    })
+
 @app.route('/extract', methods=['POST'])
 @rate_limit
 def extract_shot_data():
@@ -387,21 +410,109 @@ def extract_shot_data():
         if not shot_data:
             return jsonify({'error': 'Failed to extract data from image'}), 422
         
+        # Normalize data for frontend
+        normalized_data = {
+            'carry_yards': shot_data.get('carry_distance', shot_data.get('carry_yards')),
+            'total_yards': shot_data.get('total_distance', shot_data.get('total_yards')),
+            'ball_speed_mph': shot_data.get('ball_speed'),
+            'club_speed_mph': shot_data.get('club_speed'),
+            'launch_angle_deg': shot_data.get('launch_angle'),
+            'spin_rate_rpm': shot_data.get('spin_rate'),
+            'smash_factor': shot_data.get('smash_factor'),
+            'apex_height': shot_data.get('apex_height')
+        }
+        
         # Save if authenticated
         shot_id = None
         if 'user_id' in session:
-            shot_id = data_store.save_shot(session['user_id'], shot_data)
+            shot_id = data_store.save_shot(session['user_id'], normalized_data)
+        else:
+            # Generate shot ID for anonymous users
+            shot_id = hashlib.md5(
+                f"{datetime.now().isoformat()}{image_base64[:100]}".encode()
+            ).hexdigest()[:12]
+        
+        # Add to leaderboard if nickname provided
+        nickname = request.form.get('nickname')
+        if nickname and normalized_data.get('total_yards'):
+            leaderboard_file = os.path.join(data_store.data_dir, 'leaderboard.json')
+            try:
+                with open(leaderboard_file, 'r') as f:
+                    leaderboard = json.load(f)
+            except:
+                leaderboard = []
+            
+            leaderboard.append({
+                'nickname': nickname,
+                'total_yards': normalized_data['total_yards'],
+                'timestamp': datetime.now().isoformat(),
+                'shot_id': shot_id
+            })
+            
+            with open(leaderboard_file, 'w') as f:
+                json.dump(leaderboard, f, indent=2)
         
         return jsonify({
             'success': True,
             'shot_id': shot_id,
-            'data': shot_data,
+            'data': normalized_data,
             'processor': processor_used,
             'saved': bool(shot_id)
         })
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/leaderboard', methods=['GET'])
+def get_leaderboard():
+    """Get top shots leaderboard"""
+    # Simple in-memory leaderboard for now
+    leaderboard_file = os.path.join(data_store.data_dir, 'leaderboard.json')
+    try:
+        with open(leaderboard_file, 'r') as f:
+            leaderboard = json.load(f)
+    except:
+        leaderboard = []
+    
+    # Sort by total yards
+    leaderboard.sort(key=lambda x: x.get('total_yards', 0), reverse=True)
+    
+    return jsonify({
+        'leaderboard': leaderboard[:10]  # Top 10
+    })
+
+@app.route('/share', methods=['POST'])
+def create_share():
+    """Create a shareable link for a shot"""
+    data = request.get_json()
+    shot_id = data.get('shot_id')
+    
+    if not shot_id:
+        return jsonify({'error': 'shot_id required'}), 400
+    
+    share_code = hashlib.md5(
+        f"{shot_id}{datetime.now().isoformat()}".encode()
+    ).hexdigest()[:8]
+    
+    return jsonify({
+        'share_code': share_code,
+        'share_url': f"/shared/{share_code}"
+    })
+
+@app.route('/shared/<share_code>', methods=['GET'])
+def get_shared(share_code):
+    """Get shared shot data"""
+    # For demo, just return mock data
+    return jsonify({
+        'data': {
+            'carry_yards': 250,
+            'total_yards': 275,
+            'ball_speed_mph': 160,
+            'club_speed_mph': 110,
+            'launch_angle_deg': 12.5,
+            'spin_rate_rpm': 2500
+        }
+    })
 
 @app.route('/shots', methods=['GET'])
 def get_user_shots():
