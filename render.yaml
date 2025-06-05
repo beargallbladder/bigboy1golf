@@ -1,0 +1,50 @@
+services:
+  # Backend API - Web Service
+  - type: web
+    name: golf-shot-api
+    runtime: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python api.py"
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: GOOGLE_OAUTH_CLIENT_ID
+        sync: false  # Set in Render dashboard
+      - key: GOOGLE_OAUTH_CLIENT_SECRET
+        sync: false  # Set in Render dashboard
+      - key: OPENAI_API_KEY
+        sync: false  # Set in Render dashboard
+      - key: GEMINI_API_KEY
+        sync: false  # Set in Render dashboard
+      - key: SESSION_SECRET_KEY
+        generateValue: true  # Auto-generate secure key
+      - key: JWT_SECRET_KEY
+        generateValue: true  # Auto-generate secure key
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: golf-shot-redis
+          property: connectionString
+    
+  # Frontend - Static Site
+  - type: web  
+    name: golf-shot-frontend
+    runtime: static
+    buildCommand: "mkdir -p dist && cp app.html dist/index.html"
+    staticPublishPath: ./dist
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+
+  # Redis for sessions and rate limiting
+  - type: redis
+    name: golf-shot-redis
+    ipAllowList: []  # Only accessible from private network
+    maxMemoryPolicy: allkeys-lru
+    plan: starter  # $10/month for 256MB 
