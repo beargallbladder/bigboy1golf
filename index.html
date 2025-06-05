@@ -573,7 +573,9 @@
                     body: formData
                 });
                 
+                console.log('Extract response status:', response.status);
                 const result = await response.json();
+                console.log('Extract result:', result);
                 
                 if (result.success) {
                     displayResults(result);
@@ -593,6 +595,7 @@
         
         function displayResults(result) {
             const data = result.data;
+            console.log('Displaying data:', data);
             
             document.getElementById('carryYards').textContent = 
                 data.carry_yards || '—';
