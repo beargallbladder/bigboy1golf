@@ -3,6 +3,8 @@ __pycache__/
 *.pyc
 data/
 *.json
+!package.json
+!vercel.json
 .DS_Store
 venv/
 node_modules/

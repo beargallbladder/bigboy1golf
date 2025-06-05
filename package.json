@@ -1,0 +1,12 @@
+{
+  "name": "golf-shot-tracker-frontend",
+  "version": "1.0.0",
+  "description": "Golf Launch Monitor Data Extraction Frontend",
+  "scripts": {
+    "dev": "python3 -m http.server 8000"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/beargallbladder/bigboy1golf"
+  }
+} 

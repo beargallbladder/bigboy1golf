@@ -28,20 +28,6 @@ services:
           name: golf-shot-redis
           property: connectionString
     
-  # Frontend - Static Site
-  - type: web  
-    name: golf-shot-frontend
-    runtime: static
-    buildCommand: "mkdir -p dist && cp app.html dist/index.html"
-    staticPublishPath: ./dist
-    headers:
-      - path: /*
-        name: X-Frame-Options
-        value: DENY
-      - path: /*
-        name: X-Content-Type-Options
-        value: nosniff
-
   # Redis for sessions and rate limiting
   - type: redis
     name: golf-shot-redis
