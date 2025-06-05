@@ -46,5 +46,4 @@ services:
   - type: redis
     name: golf-shot-redis
     ipAllowList: []  # Only accessible from private network
-    maxMemoryPolicy: allkeys-lru
     plan: starter  # $10/month for 256MB 
