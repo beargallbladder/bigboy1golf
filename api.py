@@ -151,7 +151,7 @@ class AIProcessor:
                 "contents": [{
                     "parts": [
                         {
-                            "text": "Extract golf shot data from this image. Return ONLY valid JSON with these exact keys: ball_speed, launch_angle, spin_rate, carry_distance, club_speed, smash_factor, apex_height. Use null for missing values. Include units in a separate 'units' object."
+                            "text": "Extract golf shot data from this image. Return ONLY valid JSON with these exact keys: ball_speed_mph, launch_angle_deg, spin_rate_rpm, carry_yards, total_yards, club_speed_mph, smash_factor, apex_height. Use null for missing values. Numbers only, no units in values."
                         },
                         {
                             "inline_data": {
@@ -195,7 +195,7 @@ class AIProcessor:
                     "content": [
                         {
                             "type": "text",
-                            "text": "Extract golf shot data from this image. Return ONLY valid JSON with these exact keys: ball_speed, launch_angle, spin_rate, carry_distance, club_speed, smash_factor, apex_height. Use null for missing values. Include units in a separate 'units' object."
+                            "text": "Extract golf shot data from this image. Return ONLY valid JSON with these exact keys: ball_speed_mph, launch_angle_deg, spin_rate_rpm, carry_yards, total_yards, club_speed_mph, smash_factor, apex_height. Use null for missing values. Numbers only, no units in values."
                         },
                         {
                             "type": "image_url",
@@ -407,17 +407,20 @@ def extract_shot_data():
         # Process with AI
         shot_data, processor_used = ai_processor.process_image(image_base64)
         
+        print(f"AI returned data: {shot_data}")
+        print(f"Processor used: {processor_used}")
+        
         if not shot_data:
             return jsonify({'error': 'Failed to extract data from image'}), 422
         
-        # Normalize data for frontend
+        # Data is already in the correct format from AI
         normalized_data = {
-            'carry_yards': shot_data.get('carry_distance', shot_data.get('carry_yards')),
-            'total_yards': shot_data.get('total_distance', shot_data.get('total_yards')),
-            'ball_speed_mph': shot_data.get('ball_speed'),
-            'club_speed_mph': shot_data.get('club_speed'),
-            'launch_angle_deg': shot_data.get('launch_angle'),
-            'spin_rate_rpm': shot_data.get('spin_rate'),
+            'carry_yards': shot_data.get('carry_yards'),
+            'total_yards': shot_data.get('total_yards'),
+            'ball_speed_mph': shot_data.get('ball_speed_mph'),
+            'club_speed_mph': shot_data.get('club_speed_mph'),
+            'launch_angle_deg': shot_data.get('launch_angle_deg'),
+            'spin_rate_rpm': shot_data.get('spin_rate_rpm'),
             'smash_factor': shot_data.get('smash_factor'),
             'apex_height': shot_data.get('apex_height')
         }
