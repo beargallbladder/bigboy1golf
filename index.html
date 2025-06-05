@@ -327,6 +327,15 @@
         <div class="header">
             <div class="logo">Shot Tracker</div>
             <div class="subtitle">Extract your launch monitor data instantly</div>
+            <div class="auth-section" style="margin-top: 20px;">
+                <div id="userInfo" style="display: none; margin-bottom: 10px;">
+                    Welcome, <span id="userName"></span>!
+                    <button class="btn" onclick="logout()" style="margin-left: 10px; padding: 8px 16px; font-size: 14px;">Logout</button>
+                </div>
+                <button id="loginBtn" class="btn" onclick="login()" style="padding: 8px 16px; font-size: 14px;">
+                    Login with Google (20 shots/day)
+                </button>
+            </div>
         </div>
         
         <div class="tabs">
@@ -449,8 +458,67 @@
         let shotsUsed = 0;
         let maxShots = 3;
         
+        // Authentication functions
+        async function checkAuthStatus() {
+            try {
+                const response = await fetch(`${API_URL}/auth/status`, {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                
+                if (data.authenticated) {
+                    authUser = data.user;
+                    document.getElementById('loginBtn').style.display = 'none';
+                    document.getElementById('userInfo').style.display = 'block';
+                    document.getElementById('userName').textContent = data.user.name || data.user.email;
+                    maxShots = 20; // Authenticated users get 20 shots
+                } else {
+                    authUser = null;
+                    document.getElementById('loginBtn').style.display = 'block';
+                    document.getElementById('userInfo').style.display = 'none';
+                    maxShots = 3; // Anonymous users get 3 shots
+                }
+            } catch (err) {
+                console.error('Auth status check failed:', err);
+            }
+        }
+        
+        function login() {
+            // Redirect to OAuth login
+            window.location.href = `${API_URL}/auth/login?redirect_uri=${encodeURIComponent(window.location.origin + '/auth/callback')}`;
+        }
+        
+        async function logout() {
+            try {
+                await fetch(`${API_URL}/auth/logout`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                authUser = null;
+                document.getElementById('loginBtn').style.display = 'block';
+                document.getElementById('userInfo').style.display = 'none';
+                maxShots = 3;
+                shotsUsed = 0;
+                updateUI();
+                // Create new anonymous session
+                await createSession();
+            } catch (err) {
+                console.error('Logout failed:', err);
+            }
+        }
+        
         // Initialize
         async function init() {
+            // Handle OAuth callback
+            if (window.location.pathname === '/auth/callback') {
+                // Redirect to home after OAuth callback
+                window.location.href = '/';
+                return;
+            }
+            
+            // Check auth status first
+            await checkAuthStatus();
+            
             // Get or create session
             sessionId = localStorage.getItem('sessionId');
             if (!sessionId) {
@@ -570,7 +638,8 @@
                 
                 const response = await fetch(`${API_URL}/extract`, {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    credentials: 'include'
                 });
                 
                 console.log('Extract response status:', response.status);
