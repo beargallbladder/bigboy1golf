@@ -29,31 +29,47 @@ app.secret_key = os.getenv('SECRET_KEY', os.urandom(24).hex())
 CORS(app, supports_credentials=True)
 
 # Redis for session/rate limiting
-redis_client = redis.Redis(
-    host=os.getenv('REDIS_HOST', 'localhost'),
-    port=int(os.getenv('REDIS_PORT', 6379)),
-    db=0,
-    decode_responses=True
-)
+try:
+    redis_url = os.getenv('REDIS_URL')
+    if redis_url:
+        # Parse Redis URL from Render
+        redis_client = redis.from_url(redis_url, decode_responses=True)
+    else:
+        # Fallback to host/port for local development
+        redis_client = redis.Redis(
+            host=os.getenv('REDIS_HOST', 'localhost'),
+            port=int(os.getenv('REDIS_PORT', 6379)),
+            db=0,
+            decode_responses=True
+        )
+    # Test connection
+    redis_client.ping()
+except Exception as e:
+    print(f"Redis connection failed: {e}")
+    redis_client = None
 
 # OAuth setup
 oauth = OAuth(app)
-google = oauth.register(
-    name='google',
-    client_id=os.getenv('GOOGLE_CLIENT_ID'),
-    client_secret=os.getenv('GOOGLE_CLIENT_SECRET'),
-    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
-    client_kwargs={
-        'scope': 'openid email profile'
-    }
-)
+if os.getenv('GOOGLE_CLIENT_ID') and os.getenv('GOOGLE_CLIENT_SECRET'):
+    google = oauth.register(
+        name='google',
+        client_id=os.getenv('GOOGLE_CLIENT_ID'),
+        client_secret=os.getenv('GOOGLE_CLIENT_SECRET'),
+        server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+        client_kwargs={
+            'scope': 'openid email profile'
+        }
+    )
+else:
+    google = None
+    print("Google OAuth not configured - authentication features disabled")
 
 # Configuration
 CONFIG = {
     'DAILY_LIMIT_AUTH': 20,
     'DAILY_LIMIT_ANON': 3,
     'OPENAI_API_KEY': os.getenv('OPENAI_API_KEY'),
-    'GEMINI_API_KEY': os.getenv('GOOGLE_API_KEY'),
+    'GEMINI_API_KEY': os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY'),
     'RESPONSE_TIMEOUT': 2.0  # 2 second target
 }
 
@@ -61,6 +77,10 @@ CONFIG = {
 def rate_limit(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        # If Redis is not available, skip rate limiting
+        if not redis_client:
+            return f(*args, **kwargs)
+            
         user_id = session.get('user_id', None)
         
         if user_id:
@@ -73,38 +93,43 @@ def rate_limit(f):
             key = f"rate_limit:anon:{ip}:{datetime.now().strftime('%Y-%m-%d')}"
             limit = CONFIG['DAILY_LIMIT_ANON']
         
-        # Get current count
-        current = redis_client.get(key)
-        if current is None:
-            current = 0
-        else:
-            current = int(current)
-        
-        if current >= limit:
-            return jsonify({
-                'error': 'Daily limit exceeded',
-                'limit': limit,
-                'reset_time': (datetime.now() + timedelta(days=1)).replace(
-                    hour=0, minute=0, second=0
-                ).isoformat()
-            }), 429
-        
-        # Increment counter
-        redis_client.incr(key)
-        redis_client.expire(key, 86400)  # 24 hours
-        
-        # Add remaining count to response
-        response = f(*args, **kwargs)
-        if isinstance(response, tuple):
-            data, status = response
-            data = data.get_json()
-            data['rate_limit'] = {
-                'used': current + 1,
-                'limit': limit,
-                'remaining': limit - (current + 1)
-            }
-            return jsonify(data), status
-        return response
+        try:
+            # Get current count
+            current = redis_client.get(key)
+            if current is None:
+                current = 0
+            else:
+                current = int(current)
+            
+            if current >= limit:
+                return jsonify({
+                    'error': 'Daily limit exceeded',
+                    'limit': limit,
+                    'reset_time': (datetime.now() + timedelta(days=1)).replace(
+                        hour=0, minute=0, second=0
+                    ).isoformat()
+                }), 429
+            
+            # Increment counter
+            redis_client.incr(key)
+            redis_client.expire(key, 86400)  # 24 hours
+            
+            # Add remaining count to response
+            response = f(*args, **kwargs)
+            if isinstance(response, tuple):
+                data, status = response
+                data = data.get_json()
+                data['rate_limit'] = {
+                    'used': current + 1,
+                    'limit': limit,
+                    'remaining': limit - (current + 1)
+                }
+                return jsonify(data), status
+            return response
+        except Exception as e:
+            print(f"Rate limiting error: {e}")
+            # If Redis fails, allow the request
+            return f(*args, **kwargs)
     
     return decorated_function
 
@@ -282,19 +307,24 @@ def health_check():
         'services': {
             'openai': bool(CONFIG['OPENAI_API_KEY']),
             'gemini': bool(CONFIG['GEMINI_API_KEY']),
-            'redis': redis_client.ping()
+            'redis': redis_client.ping() if redis_client else False
         }
     })
 
 @app.route('/auth/login', methods=['GET'])
 def login():
     """Initiate Google OAuth login"""
+    if not google:
+        return jsonify({'error': 'Authentication not configured'}), 503
     redirect_uri = request.args.get('redirect_uri', '/auth/callback')
     return google.authorize_redirect(redirect_uri)
 
 @app.route('/auth/callback', methods=['GET'])
 def auth_callback():
     """Handle OAuth callback"""
+    if not google:
+        return jsonify({'error': 'Authentication not configured'}), 503
+    
     token = google.authorize_access_token()
     user_info = token.get('userinfo')
     
