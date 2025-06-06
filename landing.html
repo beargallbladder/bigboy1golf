@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shot Tracker - Every Shot Tells a Story</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+            background: #ffffff;
+            color: #1d1d1f;
+            line-height: 1.5;
+            overflow-x: hidden;
+        }
+        
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .hero-badge {
+            font-size: 17px;
+            color: #0071e3;
+            font-weight: 500;
+            margin-bottom: 40px;
+            animation: fadeIn 1s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .hero-title {
+            font-size: 80px;
+            font-weight: 600;
+            line-height: 1.05;
+            letter-spacing: -0.03em;
+            margin-bottom: 30px;
+            max-width: 900px;
+            animation: fadeIn 1s ease-out 0.2s both;
+        }
+        
+        .hero-subtitle {
+            font-size: 28px;
+            color: #86868b;
+            font-weight: 400;
+            margin-bottom: 60px;
+            max-width: 600px;
+            animation: fadeIn 1s ease-out 0.4s both;
+        }
+        
+        .hero-cta {
+            background: #0071e3;
+            color: white;
+            padding: 18px 48px;
+            border-radius: 980px;
+            font-size: 19px;
+            font-weight: 500;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: fadeIn 1s ease-out 0.6s both;
+        }
+        
+        .hero-cta:hover {
+            background: #0051d5;
+            transform: scale(1.05);
+        }
+        
+        .hero-cta:active {
+            transform: scale(0.98);
+        }
+        
+        .hero-image {
+            margin-top: 100px;
+            animation: fadeIn 1.2s ease-out 0.8s both;
+        }
+        
+        .hero-image img {
+            width: 100%;
+            max-width: 800px;
+            height: auto;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+        }
+        
+        /* Features Section */
+        .features {
+            padding: 120px 20px;
+            background: #f5f5f7;
+        }
+        
+        .features-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .features-header {
+            text-align: center;
+            margin-bottom: 100px;
+        }
+        
+        .features-title {
+            font-size: 56px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            margin-bottom: 20px;
+        }
+        
+        .features-subtitle {
+            font-size: 24px;
+            color: #86868b;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 80px;
+        }
+        
+        .feature {
+            text-align: center;
+        }
+        
+        .feature-icon {
+            font-size: 64px;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+        
+        .feature-title {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            letter-spacing: -0.01em;
+        }
+        
+        .feature-description {
+            font-size: 19px;
+            color: #86868b;
+            line-height: 1.6;
+        }
+        
+        /* Story Section */
+        .story {
+            padding: 120px 20px;
+            background: white;
+        }
+        
+        .story-container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        
+        .story-quote {
+            font-size: 48px;
+            font-weight: 500;
+            line-height: 1.3;
+            letter-spacing: -0.02em;
+            margin-bottom: 40px;
+            color: #1d1d1f;
+        }
+        
+        .story-author {
+            font-size: 21px;
+            color: #86868b;
+        }
+        
+        /* How It Works */
+        .how-it-works {
+            padding: 120px 20px;
+            background: #f5f5f7;
+        }
+        
+        .how-container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .how-title {
+            font-size: 56px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 80px;
+            letter-spacing: -0.02em;
+        }
+        
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 60px;
+        }
+        
+        .step {
+            text-align: center;
+        }
+        
+        .step-number {
+            display: inline-block;
+            width: 60px;
+            height: 60px;
+            background: #0071e3;
+            color: white;
+            border-radius: 50%;
+            font-size: 28px;
+            font-weight: 600;
+            line-height: 60px;
+            margin-bottom: 30px;
+        }
+        
+        .step-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        
+        .step-description {
+            font-size: 17px;
+            color: #86868b;
+            line-height: 1.5;
+        }
+        
+        /* CTA Section */
+        .cta-section {
+            padding: 120px 20px;
+            background: white;
+            text-align: center;
+        }
+        
+        .cta-title {
+            font-size: 64px;
+            font-weight: 600;
+            margin-bottom: 30px;
+            letter-spacing: -0.02em;
+        }
+        
+        .cta-subtitle {
+            font-size: 24px;
+            color: #86868b;
+            margin-bottom: 50px;
+        }
+        
+        .cta-button {
+            background: #0071e3;
+            color: white;
+            padding: 20px 60px;
+            border-radius: 980px;
+            font-size: 21px;
+            font-weight: 500;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .cta-button:hover {
+            background: #0051d5;
+            transform: scale(1.05);
+        }
+        
+        /* Footer */
+        .footer {
+            padding: 40px 20px;
+            text-align: center;
+            color: #86868b;
+            font-size: 14px;
+        }
+        
+        .footer-logo {
+            font-size: 17px;
+            font-weight: 500;
+            color: #1d1d1f;
+            margin-bottom: 20px;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 48px;
+            }
+            
+            .hero-subtitle {
+                font-size: 21px;
+            }
+            
+            .features-title,
+            .how-title {
+                font-size: 40px;
+            }
+            
+            .story-quote {
+                font-size: 32px;
+            }
+            
+            .cta-title {
+                font-size: 40px;
+            }
+        }
+        
+        /* Scroll animations */
+        .fade-in-up {
+            opacity: 0;
+            transform: translateY(40px);
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .fade-in-up.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-badge">Introducing Shot Tracker</div>
+        <h1 class="hero-title">Every shot has a story.<br>Now you can share it.</h1>
+        <p class="hero-subtitle">The world's first free golf shot tracker. Beautiful. Simple. Shareable.</p>
+        <a href="/index.html" class="hero-cta">Start Tracking</a>
+        
+        <div class="hero-image">
+            <img src="data:image/svg+xml,%3Csvg width='800' height='500' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='800' height='500' fill='%23f5f5f7' rx='20'/%3E%3Ctext x='400' y='250' font-family='-apple-system, BlinkMacSystemFont, sans-serif' font-size='120' font-weight='600' text-anchor='middle' fill='%230071e3'%3E275%3C/text%3E%3Ctext x='400' y='300' font-family='-apple-system, BlinkMacSystemFont, sans-serif' font-size='24' text-anchor='middle' fill='%2386868b'%3ETotal Distance%3C/text%3E%3C/svg%3E" alt="Shot Tracker Preview">
+        </div>
+    </section>
+    
+    <!-- Features Section -->
+    <section class="features">
+        <div class="features-container">
+            <div class="features-header fade-in-up">
+                <h2 class="features-title">Designed for golfers.</h2>
+                <p class="features-subtitle">By golfers who understand what matters.</p>
+            </div>
+            
+            <div class="features-grid">
+                <div class="feature fade-in-up">
+                    <div class="feature-icon">📸</div>
+                    <h3 class="feature-title">Instant Recognition</h3>
+                    <p class="feature-description">Just drop your launch monitor screenshot. Our AI reads TrackMan, Foresight, and more. No manual entry.</p>
+                </div>
+                
+                <div class="feature fade-in-up">
+                    <div class="feature-icon">✨</div>
+                    <h3 class="feature-title">Beautiful Simplicity</h3>
+                    <p class="feature-description">Your shot data, presented beautifully. Focus on what matters: distance, ball speed, launch, spin.</p>
+                </div>
+                
+                <div class="feature fade-in-up">
+                    <div class="feature-icon">🔗</div>
+                    <h3 class="feature-title">Share Your Best</h3>
+                    <p class="feature-description">Every great shot deserves to be shared. One tap creates a beautiful link for your friends.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Story Section -->
+    <section class="story">
+        <div class="story-container fade-in-up">
+            <p class="story-quote">"Golf is about moments. The perfect strike. The ball soaring against the sky. Now those moments can live forever."</p>
+            <p class="story-author">— A golfer who gets it</p>
+        </div>
+    </section>
+    
+    <!-- How It Works -->
+    <section class="how-it-works">
+        <div class="how-container">
+            <h2 class="how-title fade-in-up">Magic in three steps.</h2>
+            
+            <div class="steps">
+                <div class="step fade-in-up">
+                    <div class="step-number">1</div>
+                    <h3 class="step-title">Capture</h3>
+                    <p class="step-description">Screenshot your launch monitor after that perfect shot.</p>
+                </div>
+                
+                <div class="step fade-in-up">
+                    <div class="step-number">2</div>
+                    <h3 class="step-title">Upload</h3>
+                    <p class="step-description">Drop it into Shot Tracker. Watch the magic happen.</p>
+                </div>
+                
+                <div class="step fade-in-up">
+                    <div class="step-number">3</div>
+                    <h3 class="step-title">Share</h3>
+                    <p class="step-description">Get a beautiful link to share your moment of glory.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <h2 class="cta-title fade-in-up">Your best shot awaits.</h2>
+        <p class="cta-subtitle fade-in-up">Free. Forever. Because golf is for everyone.</p>
+        <a href="/index.html" class="cta-button fade-in-up">Track Your First Shot</a>
+    </section>
+    
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-logo">Shot Tracker</div>
+        <p>Made with love for the game.</p>
+    </footer>
+    
+    <script>
+        // Scroll animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -100px 0px'
+        };
+        
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, observerOptions);
+        
+        document.querySelectorAll('.fade-in-up').forEach(el => {
+            observer.observe(el);
+        });
+        
+        // Smooth scroll
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
