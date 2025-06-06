@@ -179,10 +179,14 @@
             font-weight: 500;
         }
         
-        .metrics-row {
-            display: flex;
-            justify-content: space-around;
+        .metrics-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 30px;
             margin: 40px 0;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
         }
         
         .metric {
@@ -391,19 +395,8 @@
                 <div class="hero-label">Total Distance</div>
             </div>
             
-            <div class="metrics-row">
-                <div class="metric">
-                    <div class="metric-value" id="ballSpeed">—</div>
-                    <div class="metric-label">Ball Speed</div>
-                </div>
-                <div class="metric">
-                    <div class="metric-value" id="launchAngle">—</div>
-                    <div class="metric-label">Launch</div>
-                </div>
-                <div class="metric">
-                    <div class="metric-value" id="spinRate">—</div>
-                    <div class="metric-label">Spin</div>
-                </div>
+            <div class="metrics-container" id="shotMetrics">
+                <!-- Metrics will be dynamically added here -->
             </div>
             
             <button class="share-button" onclick="shareShot()">Share This Shot</button>
@@ -521,7 +514,7 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    displayResults(result);
+                    displayShotData(result.data);
                     currentShotId = result.shot_id;
                     shotsUsed++;
                     updateShotsRemaining();
@@ -535,43 +528,88 @@
             }
         }
         
-        function displayResults(result) {
-            const data = result.data;
+        function displayShotData(data) {
+            currentShotData = data;
             
-            // Total distance as hero metric
-            document.getElementById('totalDistance').textContent = 
-                data.total_yards ? `${data.total_yards}` : '—';
+            // Display hero metric (total distance)
+            const totalYards = data.total_yards || data.total_distance || data.carry_yards || '—';
+            document.getElementById('totalDistance').textContent = totalYards;
             
-            // Other metrics
-            document.getElementById('ballSpeed').textContent = 
-                data.ball_speed_mph ? `${data.ball_speed_mph}` : '—';
-            document.getElementById('launchAngle').textContent = 
-                data.launch_angle_deg ? `${data.launch_angle_deg}°` : '—';
-            document.getElementById('spinRate').textContent = 
-                data.spin_rate_rpm ? `${Math.round(data.spin_rate_rpm/100)/10}k` : '—';
+            // Clear existing metrics
+            const container = document.getElementById('shotMetrics');
+            container.innerHTML = '';
             
-            // Hide upload, show results
-            document.getElementById('uploadZone').style.display = 'none';
+            // Define display priority for common fields
+            const priorityFields = [
+                'carry_yards', 'total_yards', 'ball_speed_mph', 'launch_angle',
+                'spin_rate', 'club_speed_mph', 'smash_factor', 'apex_height'
+            ];
+            
+            // Display priority fields first
+            priorityFields.forEach(field => {
+                if (data[field] !== undefined && data[field] !== null) {
+                    addMetric(container, field, data[field]);
+                }
+            });
+            
+            // Display all other fields
+            Object.keys(data).forEach(field => {
+                if (!priorityFields.includes(field) && data[field] !== undefined && data[field] !== null) {
+                    addMetric(container, field, data[field]);
+                }
+            });
+            
             document.getElementById('results').style.display = 'block';
         }
         
-        async function shareShot() {
-            if (!currentShotId) return;
+        function addMetric(container, field, value) {
+            const metric = document.createElement('div');
+            metric.className = 'metric';
             
+            // Format field name
+            const label = field
+                .replace(/_/g, ' ')
+                .replace(/\b\w/g, l => l.toUpperCase())
+                .replace(/Mph/g, '(mph)')
+                .replace(/Yards/g, '(yards)')
+                .replace(/Deg/g, '°')
+                .replace(/Rpm/g, '(rpm)');
+            
+            metric.innerHTML = `
+                <div class="metric-value">${value}</div>
+                <div class="metric-label">${label}</div>
+            `;
+            
+            container.appendChild(metric);
+        }
+        
+        async function shareShot() {
             try {
                 const response = await fetch(`${API_URL}/share`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ shot_id: currentShotId })
+                    body: JSON.stringify({ shot_data: currentShotData })
                 });
                 
-                const data = await response.json();
-                const shareUrl = window.location.origin + data.share_url;
+                const result = await response.json();
+                const shareUrl = `${window.location.origin}${result.share_url}`;
                 
-                document.getElementById('shareLink').textContent = shareUrl;
-                document.getElementById('shareModal').style.display = 'flex';
-            } catch (err) {
-                showError('Failed to create share link');
+                // Copy to clipboard
+                await navigator.clipboard.writeText(shareUrl);
+                
+                // Show success
+                const shareButton = document.querySelector('.share-button');
+                const originalText = shareButton.textContent;
+                shareButton.textContent = '✓ Copied!';
+                shareButton.style.background = '#34c759';
+                
+                setTimeout(() => {
+                    shareButton.textContent = originalText;
+                    shareButton.style.background = '';
+                }, 2000);
+            } catch (error) {
+                console.error('Share error:', error);
+                alert('Failed to create share link');
             }
         }
         

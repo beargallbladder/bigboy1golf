@@ -45,11 +45,14 @@
             animation: fadeIn 0.8s ease-out 0.2s both;
         }
         
-        .metrics-grid {
+        .metrics-container {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 30px;
-            margin-bottom: 60px;
+            margin: 40px 0;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
         }
         
         .metric {
@@ -161,23 +164,8 @@
             <div class="hero-metric" id="totalDistance">—</div>
             <div class="hero-label">Total Distance</div>
             
-            <div class="metrics-grid">
-                <div class="metric">
-                    <div class="metric-value" id="carryYards">—</div>
-                    <div class="metric-label">Carry (yards)</div>
-                </div>
-                <div class="metric">
-                    <div class="metric-value" id="ballSpeed">—</div>
-                    <div class="metric-label">Ball Speed (mph)</div>
-                </div>
-                <div class="metric">
-                    <div class="metric-value" id="launchAngle">—</div>
-                    <div class="metric-label">Launch Angle</div>
-                </div>
-                <div class="metric">
-                    <div class="metric-value" id="spinRate">—</div>
-                    <div class="metric-label">Spin Rate</div>
-                </div>
+            <div class="metrics-container" id="shotMetrics">
+                <!-- Metrics will be dynamically added here -->
             </div>
             
             <div class="share-info" id="shareInfo">—</div>
@@ -219,18 +207,33 @@
             const shot = data.shot_data;
             
             // Display total distance as hero metric
+            const totalYards = shot.total_yards || shot.total_distance || shot.carry_yards || '—';
             document.getElementById('totalDistance').textContent = 
-                shot.total_yards ? `${shot.total_yards} yards` : '—';
+                totalYards !== '—' ? `${totalYards} yards` : '—';
             
-            // Display other metrics
-            document.getElementById('carryYards').textContent = 
-                shot.carry_yards || '—';
-            document.getElementById('ballSpeed').textContent = 
-                shot.ball_speed_mph || '—';
-            document.getElementById('launchAngle').textContent = 
-                shot.launch_angle ? `${shot.launch_angle}°` : '—';
-            document.getElementById('spinRate').textContent = 
-                shot.spin_rate ? shot.spin_rate.toLocaleString() : '—';
+            // Clear existing metrics
+            const container = document.getElementById('shotMetrics');
+            container.innerHTML = '';
+            
+            // Define display priority for common fields
+            const priorityFields = [
+                'carry_yards', 'total_yards', 'ball_speed_mph', 'launch_angle',
+                'spin_rate', 'club_speed_mph', 'smash_factor', 'apex_height'
+            ];
+            
+            // Display priority fields first
+            priorityFields.forEach(field => {
+                if (shot[field] !== undefined && shot[field] !== null) {
+                    addMetric(container, field, shot[field]);
+                }
+            });
+            
+            // Display all other fields
+            Object.keys(shot).forEach(field => {
+                if (!priorityFields.includes(field) && shot[field] !== undefined && shot[field] !== null) {
+                    addMetric(container, field, shot[field]);
+                }
+            });
             
             // Share info
             const shareDate = new Date(data.created_at);
@@ -240,6 +243,27 @@
             // Hide loading, show content
             document.getElementById('loading').style.display = 'none';
             document.getElementById('content').style.display = 'block';
+        }
+        
+        function addMetric(container, field, value) {
+            const metric = document.createElement('div');
+            metric.className = 'metric';
+            
+            // Format field name
+            const label = field
+                .replace(/_/g, ' ')
+                .replace(/\b\w/g, l => l.toUpperCase())
+                .replace(/Mph/g, '(mph)')
+                .replace(/Yards/g, '(yards)')
+                .replace(/Deg/g, '°')
+                .replace(/Rpm/g, '(rpm)');
+            
+            metric.innerHTML = `
+                <div class="metric-value">${value}</div>
+                <div class="metric-label">${label}</div>
+            `;
+            
+            container.appendChild(metric);
         }
         
         function showError() {

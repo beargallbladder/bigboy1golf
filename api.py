@@ -151,7 +151,7 @@ class AIProcessor:
                 "contents": [{
                     "parts": [
                         {
-                            "text": "Extract golf shot data from this image. Return ONLY valid JSON with these exact keys: ball_speed_mph, launch_angle_deg, spin_rate_rpm, carry_yards, total_yards, club_speed_mph, smash_factor, apex_height. Use null for missing values. Numbers only, no units in values."
+                            "text": "Extract ALL golf shot data visible in this launch monitor screenshot. Return ONLY valid JSON containing every single data point you can see. Include all distances (carry, total, offline, etc), all ball data (speed, launch angle, spin rate, spin axis, height, descent angle, etc), all club data (club speed, attack angle, club path, face angle, smash factor, etc), timing data, and any other metrics shown. Use the exact field names and units as shown in the image. For field names, use lowercase with underscores (e.g., ball_speed_mph, carry_yards, spin_axis_deg). Include every single number and measurement visible. If a value is shown without units, infer the units from context."
                         },
                         {
                             "inline_data": {
@@ -194,8 +194,7 @@ class AIProcessor:
                     "role": "user",
                     "content": [
                         {
-                            "type": "text",
-                            "text": "Extract golf shot data from this image. Return ONLY valid JSON with these exact keys: ball_speed_mph, launch_angle_deg, spin_rate_rpm, carry_yards, total_yards, club_speed_mph, smash_factor, apex_height. Use null for missing values. Numbers only, no units in values."
+                            "text": "Extract ALL golf shot data visible in this launch monitor screenshot. Return ONLY valid JSON containing every single data point you can see. Include all distances (carry, total, offline, etc), all ball data (speed, launch angle, spin rate, spin axis, height, descent angle, etc), all club data (club speed, attack angle, club path, face angle, smash factor, etc), timing data, and any other metrics shown. Use the exact field names and units as shown in the image. For field names, use lowercase with underscores (e.g., ball_speed_mph, carry_yards, spin_axis_deg). Include every single number and measurement visible. If a value is shown without units, infer the units from context."
                         },
                         {
                             "type": "image_url",
@@ -205,7 +204,7 @@ class AIProcessor:
                         }
                     ]
                 }],
-                "max_tokens": 300
+                "max_tokens": 1000
             }
             
             response = requests.post(
@@ -413,17 +412,9 @@ def extract_shot_data():
         if not shot_data:
             return jsonify({'error': 'Failed to extract data from image'}), 422
         
-        # Data is already in the correct format from AI
-        normalized_data = {
-            'carry_yards': shot_data.get('carry_yards'),
-            'total_yards': shot_data.get('total_yards'),
-            'ball_speed_mph': shot_data.get('ball_speed_mph'),
-            'club_speed_mph': shot_data.get('club_speed_mph'),
-            'launch_angle_deg': shot_data.get('launch_angle_deg'),
-            'spin_rate_rpm': shot_data.get('spin_rate_rpm'),
-            'smash_factor': shot_data.get('smash_factor'),
-            'apex_height': shot_data.get('apex_height')
-        }
+        # Pass through ALL data that AI extracted
+        # The AI now returns all visible fields with proper naming
+        normalized_data = shot_data  # Use all fields from AI
         
         # Save if authenticated
         shot_id = None
@@ -488,34 +479,44 @@ def get_leaderboard():
 def create_share():
     """Create a shareable link for a shot"""
     data = request.get_json()
-    shot_id = data.get('shot_id')
+    shot_data = data.get('shot_data')
     
-    if not shot_id:
-        return jsonify({'error': 'shot_id required'}), 400
+    if not shot_data:
+        return jsonify({'error': 'shot_data required'}), 400
     
-    share_code = hashlib.md5(
-        f"{shot_id}{datetime.now().isoformat()}".encode()
+    share_id = hashlib.md5(
+        f"{json.dumps(shot_data)}{datetime.now().isoformat()}".encode()
     ).hexdigest()[:8]
     
+    # Store the share data
+    share_file = os.path.join(data_store.data_dir, f"share_{share_id}.json")
+    share_record = {
+        'share_id': share_id,
+        'shot_data': shot_data,
+        'created_at': datetime.now().isoformat()
+    }
+    
+    with open(share_file, 'w') as f:
+        json.dump(share_record, f, indent=2)
+    
     return jsonify({
-        'share_code': share_code,
-        'share_url': f"/shared/{share_code}"
+        'share_id': share_id,
+        'share_url': f"/shared/{share_id}"
     })
 
-@app.route('/shared/<share_code>', methods=['GET'])
-def get_shared(share_code):
+@app.route('/share/<share_id>', methods=['GET'])
+def get_shared(share_id):
     """Get shared shot data"""
-    # For demo, just return mock data
-    return jsonify({
-        'data': {
-            'carry_yards': 250,
-            'total_yards': 275,
-            'ball_speed_mph': 160,
-            'club_speed_mph': 110,
-            'launch_angle_deg': 12.5,
-            'spin_rate_rpm': 2500
-        }
-    })
+    share_file = os.path.join(data_store.data_dir, f"share_{share_id}.json")
+    
+    try:
+        with open(share_file, 'r') as f:
+            share_data = json.load(f)
+            return jsonify(share_data)
+    except FileNotFoundError:
+        return jsonify({'error': 'Share not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/shots', methods=['GET'])
 def get_user_shots():
