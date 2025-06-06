@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shared Shot - Shot Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+            background: #ffffff;
+            color: #1d1d1f;
+            line-height: 1.5;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .container {
+            max-width: 600px;
+            width: 100%;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        
+        .hero-metric {
+            font-size: 96px;
+            font-weight: 600;
+            letter-spacing: -0.03em;
+            line-height: 1;
+            margin-bottom: 10px;
+            animation: fadeIn 0.8s ease-out;
+        }
+        
+        .hero-label {
+            font-size: 24px;
+            color: #86868b;
+            margin-bottom: 60px;
+            animation: fadeIn 0.8s ease-out 0.2s both;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin-bottom: 60px;
+        }
+        
+        .metric {
+            animation: fadeIn 0.8s ease-out 0.4s both;
+        }
+        
+        .metric-value {
+            font-size: 40px;
+            font-weight: 600;
+            color: #1d1d1f;
+            line-height: 1.2;
+        }
+        
+        .metric-label {
+            font-size: 17px;
+            color: #86868b;
+            margin-top: 5px;
+        }
+        
+        .share-info {
+            font-size: 14px;
+            color: #86868b;
+            margin-top: 40px;
+            animation: fadeIn 0.8s ease-out 0.6s both;
+        }
+        
+        .cta {
+            margin-top: 60px;
+            animation: fadeIn 0.8s ease-out 0.8s both;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            background: #0071e3;
+            color: white;
+            padding: 12px 32px;
+            border-radius: 980px;
+            font-size: 17px;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .cta-button:hover {
+            background: #0051d5;
+            transform: scale(1.05);
+        }
+        
+        .error {
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .error-title {
+            font-size: 48px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        
+        .error-message {
+            font-size: 21px;
+            color: #86868b;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #f5f5f7;
+            border-top-color: #0071e3;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <div>Loading shot data...</div>
+        </div>
+        
+        <div class="error" id="error" style="display: none;">
+            <div class="error-title">Shot Not Found</div>
+            <div class="error-message">This shot may have been removed or the link is invalid.</div>
+        </div>
+        
+        <div id="content" style="display: none;">
+            <div class="hero-metric" id="totalDistance">—</div>
+            <div class="hero-label">Total Distance</div>
+            
+            <div class="metrics-grid">
+                <div class="metric">
+                    <div class="metric-value" id="carryYards">—</div>
+                    <div class="metric-label">Carry (yards)</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="ballSpeed">—</div>
+                    <div class="metric-label">Ball Speed (mph)</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="launchAngle">—</div>
+                    <div class="metric-label">Launch Angle</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="spinRate">—</div>
+                    <div class="metric-label">Spin Rate</div>
+                </div>
+            </div>
+            
+            <div class="share-info" id="shareInfo">—</div>
+            
+            <div class="cta">
+                <a href="/app" class="cta-button">Track Your Shot</a>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_URL = 'https://golf-shot-api.onrender.com';
+        
+        async function loadSharedShot() {
+            const shareId = window.location.pathname.split('/').pop();
+            
+            if (!shareId) {
+                showError();
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/share/${shareId}`);
+                
+                if (!response.ok) {
+                    showError();
+                    return;
+                }
+                
+                const data = await response.json();
+                displayShot(data);
+            } catch (error) {
+                console.error('Error loading shot:', error);
+                showError();
+            }
+        }
+        
+        function displayShot(data) {
+            const shot = data.shot_data;
+            
+            // Display total distance as hero metric
+            document.getElementById('totalDistance').textContent = 
+                shot.total_yards ? `${shot.total_yards} yards` : '—';
+            
+            // Display other metrics
+            document.getElementById('carryYards').textContent = 
+                shot.carry_yards || '—';
+            document.getElementById('ballSpeed').textContent = 
+                shot.ball_speed_mph || '—';
+            document.getElementById('launchAngle').textContent = 
+                shot.launch_angle ? `${shot.launch_angle}°` : '—';
+            document.getElementById('spinRate').textContent = 
+                shot.spin_rate ? shot.spin_rate.toLocaleString() : '—';
+            
+            // Share info
+            const shareDate = new Date(data.created_at);
+            document.getElementById('shareInfo').textContent = 
+                `Shared on ${shareDate.toLocaleDateString()}`;
+            
+            // Hide loading, show content
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+        }
+        
+        function showError() {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').style.display = 'block';
+        }
+        
+        // Load on page load
+        loadSharedShot();
+    </script>
+</body>
+</html> 
